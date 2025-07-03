@@ -16,25 +16,20 @@ provider "azurerm" {
 
 # Create a resource group
 resource "azurerm_resource_group" "main" {
-    name            =   "rg-terraform-demo"
-    location        =   "West US 2"
-    tags            =   {
-        environment =   "dev"
-        project     =   "terraform-demo"
-    }
+    name            =   "rg-${var.environment}-${var.project_name}"
+    location        =   var.location
+    tags            =   var.tags
 }
 
 # Create a virtual network
 resource "azurerm_virtual_network" "main" {
-    name            =   "vnet-terraform-demo"
-    address_space   =   ["10.0.0.0/24"]
+    name            =   "vnet-${var.environment}-${var.project_name}"
+    address_space   =   var.address_space
     location        =   azurerm_resource_group.main.location
     resource_group_name = azurerm_resource_group.main.name
 
-    tags = {
-        managed_by  =   "terraform"
-        cost_center =   "engineering"
-        owner       =   "devops-team"
-    }
+    tags = merge(var.tags, {
+        project_code    =   "234343"
+    })
   
 }
