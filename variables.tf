@@ -1,35 +1,36 @@
 variable "location" {
-    description = "The Azure region where resources will be created"
-    type        = string
-    default     = "West US 2"
+    description = "the azure region where resources will be created"
+    type = string
+    default = "West US 2"
 }
 
 variable "environment" {
-    description = "The environment for resource eg dev, staging, prod"
-    type        = string
-    default     = "dev"
+    description = "The environment for the resources - dev, staging, prod"
+    type = string
+    default = "dev"
 }
 
 variable "resource_group_name" {
-    description     = "The name of the resource group"
-    type            = string
-    default         = "rg-terraform-demo"
+    description = "The name of the resource group"
+    type = string
+    default = "rg-terraform-demo"
 }
 
 variable "tags" {
     description = "Tags to apply to resources"
     type = map(string)
     default = {
-        managed_by  = "terraform"
-        cost_center =   "engineering"
-        owner       =   "devops-team"
+      managed_by = "terraform"
+      cost_center = "engineering"
+      owner        = "devops-team"
     }
+  
 }
 
 variable "virtual_network_name" {
-    description     =   "The name of the vnet"
-    type            =   string
-    default         =   "vnet-terraform-demo"
+    description = "The name of the virtual network"
+    type = string
+    default = "vnet-terraform-demo"
   
 }
 
@@ -47,7 +48,7 @@ variable "subnet_address_prefixes" {
 }
 
 variable "project_name" {
-    description = "The name of the project"
+    description = "The project name"
     type = string
   
 }
