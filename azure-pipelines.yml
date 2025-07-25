@@ -9,6 +9,22 @@ trigger:
 pr:
   - main
 
+parameters:
+  - name: environmentToDestroy
+    displayName: "Environment to Destroy, SET DEFAULT=none FOR NON-DESTRUCT"
+    type: string
+    default: "none"
+    values:
+      - none
+      - dev
+      - staging
+    # Note: prod not included for safety
+
+  - name: confirmDestroy
+    displayName: "Type DESTROY to confirm, USE ' FOR NON-DESTRUCT"
+    type: string
+    default: ""
+
 variables:
   - group: shared-backend-variable
 
@@ -53,7 +69,7 @@ stages:
   - stage: DeployDevStage
     displayName: "Deploy to Dev Env"
     dependsOn: ValidateAndPlan
-    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'), eq('${{ parameters.environmentToDestroy }}', 'none'))
     variables:
       - group: terraform-dev-variables
     jobs:
@@ -98,7 +114,7 @@ stages:
   - stage: DeployStagingEnv
     displayName: "Deploy to Stage Env"
     dependsOn: DeployDevStage
-    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'), eq('${{ parameters.environmentToDestroy }}', 'none'))
     variables:
       - group: terraform-staging-variables
     jobs:
@@ -143,7 +159,7 @@ stages:
   - stage: DeployProdEnv
     displayName: "Deploy to Prod Env"
     dependsOn: DeployStagingEnv
-    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'), eq('${{ parameters.environmentToDestroy }}', 'none'))
     variables:
       - group: terraform-prod-variables
     jobs:
@@ -183,4 +199,69 @@ stages:
                     provider: "azurerm"
                     command: "apply"
                     commandOptions: "tfplan"
+                    environmentServiceNameAzureRM: "Terraform-project-svcConnection"
+
+  - stage: DestroyEnvironment # NEW STAGE FOR DESTRUCTION
+    displayName: "Destroy Specified Environment"
+    # This stage depends on NO DEPLOYMENT STAGE to avoid implicit dependencies,
+    # It will only run if parameters allow it.
+    condition: and(eq('${{ parameters.confirmDestroy }}', 'DESTROY'), ne('${{ parameters.environmentToDestroy }}', 'none'))
+
+    variables:
+      - ${{ if eq(parameters.environmentToDestroy, 'dev') }}:
+          - group: terraform-dev-variables
+      - ${{ if eq(parameters.environmentToDestroy, 'staging') }}:
+          - group: terraform-staging-variables
+
+    jobs:
+      - deployment: DestroyJob
+        displayName: "Destroy Job"
+        # target the environment selected by the parameter for approvals/checks
+        environment: ${{ parameters.environmentToDestroy }}
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - checkout: self
+
+                - task: TerraformInstaller@1
+                  displayName: "Terraform Install"
+                  inputs:
+                    terraformVersion: "latest"
+
+                # --- Dynamic Terraform Init based on environmentToDestroy ---
+                # Only run this init if the environment to destroy is 'dev'
+                - task: TerraformTask@5
+                  displayName: "Terraform Init (Dev Backend)"
+                  condition: eq('${{ parameters.environmentToDestroy }}', 'dev')
+                  inputs:
+                    provider: "azurerm"
+                    command: "init"
+                    backendServiceArm: "Terraform-project-svcConnection"
+                    backendAzureRmResourceGroupName: "$(TF_BACKEND_RESOURCE_GROUP)"
+                    backendAzureRmStorageAccountName: "$(TF_BACKEND_STORAGE_ACCOUNT)"
+                    backendAzureRmContainerName: "$(TF_BACKEND_CONTAINER)"
+                    backendAzureRmKey: "$(TF_BACKEND_KEY)" # Key for Dev environment
+
+                # Only run this init if the environment to destroy is 'staging'
+                - task: TerraformTask@5
+                  displayName: "Terraform Init (Staging Backend)"
+                  condition: eq('${{ parameters.environmentToDestroy }}', 'staging')
+                  inputs:
+                    provider: "azurerm"
+                    command: "init"
+                    backendServiceArm: "Terraform-project-svcConnection"
+                    backendAzureRmResourceGroupName: "$(TF_BACKEND_RESOURCE_GROUP)"
+                    backendAzureRmStorageAccountName: "$(TF_BACKEND_STORAGE_ACCOUNT)"
+                    backendAzureRmContainerName: "$(TF_BACKEND_CONTAINER)"
+                    backendAzureRmKey: "staging.tfstate" # Key for Staging environment
+
+                # --- Terraform Destroy Command ---
+                - task: TerraformTask@5
+                  displayName: "Terraform Destroy"
+                  inputs:
+                    provider: "azurerm"
+                    command: "destroy"
+                    # TF_VAR_environment is now correctly set as a pipeline variable by the stage's 'variables' block
+                    commandOptions: '-var-file=environments/$(TF_VAR_environment).tfvars -var="database_password=$(TF_VAR_database_password)" -auto-approve'
                     environmentServiceNameAzureRM: "Terraform-project-svcConnection"
