@@ -20,71 +20,16 @@ provider "azurerm" {
   features {}
 }
 
-locals {
-  environment_config = {
-    default = {
-      vm_size  = "Standard_B1s"
-      vm_count = 1
-    }
+module "compute" {
+  source = "./modules/compute"
 
-    dev = {
-      vm_size  = "Standard_B1s"
-      vm_count = 1
-    }
-
-    prod = {
-      vm_size  = "Standard_DS1_v2"
-      vm_count = 2
-    }
-  }
-
-  current_config = local.environment_config[terraform.workspace]
+  project_name            = "projkpi"
+  team_name               = var.team_name
+  environment             = var.environment
+  location                = var.location
+  address_space           = var.address_space
+  subnet_address_prefixes = var.subnet_address_prefixes
+  vm_count                = var.vm_count
+  vm_size                 = var.vm_size
+  tags                    = var.tags
 }
-
-# Create a resource group
-resource "azurerm_resource_group" "main" {
-  name     = "rg-${terraform.workspace}-${var.project_name}"
-  location = var.location
-  tags = {
-    environment = terraform.workspace
-    project     = "terraform-demo"
-  }
-}
-
-# Create a virtual network
-resource "azurerm_virtual_network" "main" {
-  name                = "vnet-${terraform.workspace}-${var.project_name}"
-  address_space       = var.address_space
-  location            = azurerm_resource_group.main.location
-  resource_group_name = azurerm_resource_group.main.name
-
-  tags = merge(var.tags, {
-    project_code = "233323"
-  })
-}
-
-resource "azurerm_subnet" "main" {
-  name                 = "subnet-${terraform.workspace}-${var.project_name}"
-  resource_group_name  = azurerm_resource_group.main.name
-  virtual_network_name = azurerm_virtual_network.main.name
-  address_prefixes     = var.subnet_address_prefixes
-}
-
-resource "azurerm_network_interface" "main" {
-  count               = local.current_config.vm_count
-  name                = "nic-${terraform.workspace}-${var.project_name}-${count.index + 1}"
-  location            = azurerm_resource_group.main.location
-  resource_group_name = azurerm_resource_group.main.name
-
-  ip_configuration {
-    name                          = "ipconfig-${terraform.workspace}-${var.project_name}-${count.index + 1}"
-    subnet_id                     = azurerm_subnet.main.id
-    private_ip_address_allocation = "Dynamic"
-  }
-
-  tags = merge(var.tags, {
-    environment  = terraform.workspace
-    project_code = "122212"
-  })
-}
-
