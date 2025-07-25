@@ -66,7 +66,6 @@ variable "database_password" {
   description = "The password for the database administrator."
   type        = string
   sensitive   = true
-  default     = "P@ssw0rd1234"
 }
 
 variable "database_sku" {
