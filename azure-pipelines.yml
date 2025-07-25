@@ -94,3 +94,93 @@ stages:
                     command: "apply"
                     commandOptions: "tfplan"
                     environmentServiceNameAzureRM: "Terraform-project-svcConnection"
+
+  - stage: DeployStagingEnv
+    displayName: "Deploy to Stage Env"
+    dependsOn: DeployDevStage
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+    variables:
+      - group: terraform-staging-variables
+    jobs:
+      - deployment: DeployStaging
+        displayName: "StagingDeployJob"
+        environment: "staging"
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - checkout: self
+
+                - task: TerraformInstaller@1
+                  inputs:
+                    terraformVersion: "latest"
+                - task: TerraformTask@5
+                  displayName: terraform-init
+                  inputs:
+                    provider: "azurerm"
+                    command: "init"
+                    backendServiceArm: "Terraform-project-svcConnection"
+                    backendAzureRmResourceGroupName: "$(TF_BACKEND_RESOURCE_GROUP)"
+                    backendAzureRmStorageAccountName: "$(TF_BACKEND_STORAGE_ACCOUNT)"
+                    backendAzureRmContainerName: "$(TF_BACKEND_CONTAINER)"
+                    backendAzureRmKey: "staging.tfstate"
+
+                - task: TerraformTask@5
+                  displayName: "Terraform plan"
+                  inputs:
+                    provider: "azurerm"
+                    command: "plan"
+                    commandOptions: '-var-file=environments/$(TF_VAR_environment).tfvars -out=tfplan -var="database_password=$(TF_VAR_database_password)"'
+                    environmentServiceNameAzureRM: "Terraform-project-svcConnection"
+
+                - task: TerraformTask@5
+                  inputs:
+                    provider: "azurerm"
+                    command: "apply"
+                    commandOptions: "tfplan"
+                    environmentServiceNameAzureRM: "Terraform-project-svcConnection"
+
+  - stage: DeployProdEnv
+    displayName: "Deploy to Prod Env"
+    dependsOn: DeployStagingEnv
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+    variables:
+      - group: terraform-prod-variables
+    jobs:
+      - deployment: DeployProd
+        displayName: "ProdDeployJob"
+        environment: "prod"
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - checkout: self
+
+                - task: TerraformInstaller@1
+                  inputs:
+                    terraformVersion: "latest"
+                - task: TerraformTask@5
+                  displayName: terraform-init
+                  inputs:
+                    provider: "azurerm"
+                    command: "init"
+                    backendServiceArm: "Terraform-project-svcConnection"
+                    backendAzureRmResourceGroupName: "$(TF_BACKEND_RESOURCE_GROUP)"
+                    backendAzureRmStorageAccountName: "$(TF_BACKEND_STORAGE_ACCOUNT)"
+                    backendAzureRmContainerName: "$(TF_BACKEND_CONTAINER)"
+                    backendAzureRmKey: "prod.tfstate"
+
+                - task: TerraformTask@5
+                  displayName: "Terraform plan"
+                  inputs:
+                    provider: "azurerm"
+                    command: "plan"
+                    commandOptions: '-var-file=environments/$(TF_VAR_environment).tfvars -out=tfplan -var="database_password=$(TF_VAR_database_password)"'
+                    environmentServiceNameAzureRM: "Terraform-project-svcConnection"
+
+                - task: TerraformTask@5
+                  inputs:
+                    provider: "azurerm"
+                    command: "apply"
+                    commandOptions: "tfplan"
+                    environmentServiceNameAzureRM: "Terraform-project-svcConnection"
