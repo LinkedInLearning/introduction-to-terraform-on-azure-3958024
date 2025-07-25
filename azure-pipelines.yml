@@ -18,7 +18,7 @@ parameters:
       - none
       - dev
       - staging
-    # Note: prod not included for safety
+      # - prod # Note: prod should not be included for safety
 
   - name: confirmDestroy
     displayName: "Type DESTROY to confirm, USE ' FOR NON-DESTRUCT"
@@ -212,6 +212,9 @@ stages:
           - group: terraform-dev-variables
       - ${{ if eq(parameters.environmentToDestroy, 'staging') }}:
           - group: terraform-staging-variables
+      # Uncomment the following line if you want to include prod destruction
+      # - ${{ if eq(parameters.environmentToDestroy, 'prod') }}:
+      #     - group: terraform-prod-variables
 
     jobs:
       - deployment: DestroyJob
@@ -255,6 +258,20 @@ stages:
                     backendAzureRmStorageAccountName: "$(TF_BACKEND_STORAGE_ACCOUNT)"
                     backendAzureRmContainerName: "$(TF_BACKEND_CONTAINER)"
                     backendAzureRmKey: "staging.tfstate" # Key for Staging environment
+
+                # Uncomment the following block if you want to include prod destruction
+                # Only run this init if the environment to destroy is 'prod'
+                # - task: TerraformTask@5
+                #   displayName: "Terraform Init (Prod Backend)"
+                #   condition: eq('${{ parameters.environmentToDestroy }}', 'prod')
+                #   inputs:
+                #     provider: "azurerm"
+                #     command: "init"
+                #     backendServiceArm: "Terraform-project-svcConnection"
+                #     backendAzureRmResourceGroupName: "$(TF_BACKEND_RESOURCE_GROUP)"
+                #     backendAzureRmStorageAccountName: "$(TF_BACKEND_STORAGE_ACCOUNT)"
+                #     backendAzureRmContainerName: "$(TF_BACKEND_CONTAINER)"
+                #     backendAzureRmKey: "prod.tfstate" # Key for prod environment
 
                 # --- Terraform Destroy Command ---
                 - task: TerraformTask@5
