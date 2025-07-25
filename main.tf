@@ -33,3 +33,25 @@ module "compute" {
   vm_size                 = var.vm_size
   tags                    = var.tags
 }
+
+module "database" {
+  source = "./modules/database"
+
+  project_name   = "projkpi"
+  environment    = var.environment
+  location       = var.location
+  admin_password = var.database_password
+  database_sku   = var.database_sku
+  tags           = var.tags
+}
+
+module "web_app" {
+  source = "./modules/web-app"
+
+  project_name               = "projkpi"
+  environment                = var.environment
+  location                   = var.location
+  app_service_sku            = var.app_service_sku
+  database_connection_string = module.database.connection_string
+  tags                       = var.tags
+}
