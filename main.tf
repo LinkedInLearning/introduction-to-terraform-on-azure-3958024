@@ -6,6 +6,12 @@ terraform {
       version = "4.20.0"
     }
   }
+  backend "azurerm" {
+    resource_group_name  = "terraform-state-rg"
+    storage_account_name = "<YOUR_UNIQUE_STORAGE_ACCOUNT_NAME>"
+    container_name       = "tfstate"
+    key                  = "terraform.tfstate"
+  }
 }
 
 #Configure the Azure provider features
