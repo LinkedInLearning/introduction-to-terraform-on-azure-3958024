@@ -81,3 +81,34 @@ resource "azurerm_network_interface" "main" {
     project_code = "122212"
   })
 }
+
+resource "azurerm_linux_virtual_machine" "main" {
+  count               = local.current_config.vm_count
+  name                = "vm-${terraform.workspace}-${var.project_name}-${count.index + 1}"
+  resource_group_name = azurerm_resource_group.main.name
+  location            = azurerm_resource_group.main.location
+  size                = local.current_config.vm_size
+
+  disable_password_authentication = false
+  admin_username                  = "adminuser"
+  admin_password                  = "P@ssword1234!"
+  network_interface_ids = [
+    azurerm_network_interface.main[count.index].id,
+  ]
+
+  os_disk {
+    caching              = "ReadWrite"
+    storage_account_type = "Standard_LRS"
+  }
+
+  source_image_reference {
+    publisher = "Canonical"
+    offer     = "0001-com-ubuntu-server-jammy"
+    sku       = "22_04-lts"
+    version   = "latest"
+  }
+
+  tags = merge(var.tags, {
+    environment = terraform.workspace
+  })
+}
