@@ -60,3 +60,24 @@ variable "vm_size" {
   type        = string
   default     = "Standard_B1s"
 }
+
+# Database configuration
+variable "database_password" {
+  description = "The password for the database administrator."
+  type        = string
+  sensitive   = true
+  default     = "P@ssw0rd1234"
+}
+
+variable "database_sku" {
+  description = "The SKU for the database."
+  type        = string
+  default     = "Basic"
+}
+
+# Web App configuration
+variable "app_service_sku" {
+  description = "The SKU for the App Service plan."
+  type        = string
+  default     = "B1"
+}
